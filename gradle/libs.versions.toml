@@ -1,0 +1,72 @@
+
+
+[versions]
+kotlin = "1.8.21"
+springdoc = "2.8.15"
+spring-modulith = "1.4.1"
+
+[libraries]
+spring-boot-starter-data-rest = { group = "org.springframework.boot", name = "spring-boot-starter-data-rest" }
+spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }
+spring-boot-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web" }
+#spring-web = { group = "org.springframework", name = "spring-web" } #возможно можно удалить
+#spring-webmvc = { group = "org.springframework", name = "spring-webmvc" } #возможно можно удалить
+spring-boot-starter-webflux = { group = "org.springframework.boot", name = "spring-boot-starter-webflux" }
+spring-session-core = { group = "org.springframework.session", name = "spring-session-core" }
+spring-core = { group = "org.springframework", name = "spring-core" }
+spring-security-web = { group = "org.springframework.security", name = "spring-security-web" }
+spring-security-config = { group = "org.springframework.security", name = "spring-security-config" }
+spring-security-messaging = { group = "org.springframework.security", name = "spring-security-messaging" }
+#spring-websocket = { group = "org.springframework", name = "spring-websocket" } #возможно можно удалить
+spring-messaging = { group = "org.springframework", name = "spring-messaging" }
+spring-session-jdbc = { group = "org.springframework.session", name = "spring-session-jdbc" }
+spring-data-r2dbc = { group = "org.springframework.data", name = "spring-data-r2dbc" } #возможно можно удалить
+spring-boot-starter-data-r2dbc = { group = "org.springframework.boot", name = "spring-boot-starter-data-r2dbc" }
+spring-boot-starter-jdbc = { group = "org.springframework.boot", name = "spring-boot-starter-jdbc" }
+spring-boot-starter-aop = { group = "org.springframework.boot", name = "spring-boot-starter-aop" }
+spring-boot-starter-websocket = { group = "org.springframework.boot", name = "spring-boot-starter-websocket" }
+spring-batch-core = { group = "org.springframework.batch", name = "spring-batch-core" }
+spring-boot-starter = { group = "org.springframework.boot", name = "spring-boot-starter" }
+spring-boot-starter-data-jpa = { group = "org.springframework.boot", name = "spring-boot-starter-data-jpa" }
+spring-boot-devtools = { group = "org.springframework.boot", name = "spring-boot-devtools" }
+spring-retry = { group = "org.springframework.retry", name = "spring-retry" }
+spring-modulith-starter-core = { group = "org.springframework.modulith", name = "spring-modulith-starter-core", version.ref = "spring-modulith" }
+spring-modulith-starter-jdbc = { group = "org.springframework.modulith", name = "spring-modulith-starter-jdbc", version.ref = "spring-modulith" }
+spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
+spring-boot-starter-mail = { group = "org.springframework.boot", name = "spring-boot-starter-mail" }
+
+springdoc-openapi-starter-webmvc-ui = { group = "org.springdoc", name = "springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+springdoc-openapi-starter-webflux-ui = { group = "org.springdoc", name = "springdoc-openapi-starter-webflux-ui", version.ref = "springdoc" }
+springdoc-openapi-starter-common = { group = "org.springdoc", name = "springdoc-openapi-starter-common", version.ref = "springdoc" }
+
+liquibase-groovy-dsl = { group = "org.liquibase", name = "liquibase-groovy-dsl", version = "2.1.1" }
+picocli = { group = "info.picocli", name = "picocli", version = "4.7.4" }
+
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+jackson-module-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin" }
+reactor-kotlin-extensions = { group = "io.projectreactor.kotlin", name = "reactor-kotlin-extensions" }
+kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect" }
+kotlinx-coroutines-reactor = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-reactor" }
+kotlin-stdlib-jdk8 = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib-jdk8" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json"}
+kotlin-logging = { group = "io.github.microutils", name = "kotlin-logging", version = "3.0.5" }
+
+gson = { group = "com.google.code.gson", name = "gson", version = "2.8.6" }
+hikariCP = { group = "com.zaxxer", name = "HikariCP", version = "3.3.1" }
+postgresql = { group = "org.postgresql", name = "postgresql", version = "42.7.2" }
+hibernate-core = { group = "org.hibernate", name = "hibernate-core", version = "5.6.15.Final" }
+
+#r2dbc-postgresql = { group = "io.r2dbc", name = "r2dbc-postgresql", version = "1.0.0.M7" }
+r2dbc-postgresql = { group = "org.postgresql", name = "r2dbc-postgresql", version = "1.0.0.RELEASE" }
+r2dbc-spi = { group = "io.r2dbc", name = "r2dbc-spi", version = "1.0.0.RELEASE" }
+hypersistence-utils-hibernate-55 = { group = "io.hypersistence", name = "hypersistence-utils-hibernate-55", version = "3.7.0" }
+
+liquibase-core = { group = "org.liquibase", name = "liquibase-core", version = "4.30.0" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+spring-boot = { id = "org.springframework.boot", version = "3.5.10" }
+dependency-management = { id = "io.spring.dependency-management", version = "1.1.6" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version = "1.7.0" }
+liquibase = { id = "org.liquibase.gradle", version = "2.2.0" }
