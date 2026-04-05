@@ -77,13 +77,20 @@ private class TableSymbolProcessor(
         val tableConfig = resolveTableConfig(classDeclaration, className)
         val properties = selectProperties(classDeclaration, tableConfig.allProperties)
         val columns = properties
-            .map { property ->
-                ColumnInfo(
-                    propertyName = property.simpleName.asString(),
-                    columnName = resolveColumnName(property)
-                )
-            }
+            .map { property -> toColumnInfo(property) }
             .toList()
+        val constructorParameterNames = classDeclaration.primaryConstructor
+            ?.parameters
+            ?.mapNotNull { it.name?.asString() }
+            ?.toSet()
+            ?: emptySet()
+        val constructorProperties = classDeclaration.getAllProperties()
+            .filter { it.simpleName.asString() in constructorParameterNames }
+            .toList()
+        val mapperColumns = constructorProperties
+            .map { property -> toColumnInfo(property) }
+            .toList()
+        val canGenerateMapper = tableConfig.allProperties || constructorProperties.all { hasColumnAnnotation(it) }
 
         val dependencies = classDeclaration.containingFile?.let { Dependencies(false, it) } ?: Dependencies(false)
         val file = codeGenerator.createNewFile(
@@ -93,8 +100,35 @@ private class TableSymbolProcessor(
         )
 
         OutputStreamWriter(file, StandardCharsets.UTF_8).use { writer ->
-            writer.write(buildGeneratedSource(packageName, className, tableConfig.tableName, columns))
+            writer.write(
+                buildGeneratedSource(
+                    packageName = packageName,
+                    className = className,
+                    tableName = tableConfig.tableName,
+                    columns = columns,
+                    mapperColumns = mapperColumns,
+                    generateMapper = canGenerateMapper
+                )
+            )
         }
+    }
+
+    private fun toColumnInfo(property: KSPropertyDeclaration): ColumnInfo {
+        val resolvedType = property.type.resolve()
+        val typeDeclaration = resolvedType.declaration
+        val resolvedTypeName = typeDeclaration.qualifiedName?.asString()
+            ?: typeDeclaration.simpleName.asString()
+        val explicitColumnName = resolveExplicitColumnName(property)
+        return ColumnInfo(
+            propertyName = property.simpleName.asString(),
+            columnName = explicitColumnName?.takeIf { it.isNotBlank() }
+                ?: toSnakeCase(property.simpleName.asString()),
+            typeName = resolvedTypeName,
+            isNullable = resolvedType.nullability == com.google.devtools.ksp.symbol.Nullability.NULLABLE,
+            isEnum = typeDeclaration is KSClassDeclaration && typeDeclaration.classKind == ClassKind.ENUM_CLASS,
+            enumTypeName = resolvedTypeName,
+            hasExplicitColumnName = !explicitColumnName.isNullOrBlank()
+        )
     }
 
     private fun hasTableInfoCompanion(classDeclaration: KSClassDeclaration): Boolean {
@@ -141,17 +175,14 @@ private class TableSymbolProcessor(
         }
     }
 
-    private fun resolveColumnName(property: KSPropertyDeclaration): String {
+    private fun resolveExplicitColumnName(property: KSPropertyDeclaration): String? {
         val columnAnnotation = property.annotations
             .firstOrNull { it.annotationType.resolve().declaration.qualifiedName?.asString() == COLUMN_ANNOTATION }
 
-        val explicitName = columnAnnotation
+        return columnAnnotation
             ?.arguments
             ?.firstOrNull { it.name?.asString() == "value" }
             ?.value as? String
-
-        return explicitName?.takeIf { it.isNotBlank() }
-            ?: toSnakeCase(property.simpleName.asString())
     }
 
     private fun toSnakeCase(name: String): String {
@@ -165,21 +196,37 @@ private class TableSymbolProcessor(
         packageName: String,
         className: String,
         tableName: String,
-        columns: List<ColumnInfo>
+        columns: List<ColumnInfo>,
+        mapperColumns: List<ColumnInfo>,
+        generateMapper: Boolean
     ): String {
         val builder = StringBuilder()
 
         if (packageName.isNotBlank()) {
             builder.append("package ").append(packageName).append('\n').append('\n')
         }
+        builder.append("import kotlin.reflect.KProperty1").append('\n')
+        builder.append("import java.util.Locale").append('\n')
+        appendResultSetMapperImports(builder, generateMapper)
 
         builder.append("val ").append(className).append(".TableInfo.TableName: String").append('\n')
             .append("    get() = \"").append(escapeString(tableName)).append('"').append('\n').append('\n')
 
-        for (column in columns) {
-            builder.append("val ").append(className).append(".TableInfo.")
-                .append(column.propertyName).append(": String").append('\n')
-                .append("    get() = \"").append(escapeString(column.columnName)).append('"').append('\n').append('\n')
+        val explicitColumns = columns.filter { it.hasExplicitColumnName }
+        builder.append("val <T> KProperty1<").append(className).append(", T>.columnName: String").append('\n')
+        if (explicitColumns.isEmpty()) {
+            builder.append("    get() = ")
+                .append(className.replaceFirstChar { it.lowercase(Locale.getDefault()) })
+                .append("ToSnakeCase(name)").append('\n').append('\n')
+        } else {
+            builder.append("    get() = when (this) {").append('\n')
+            for (column in explicitColumns) {
+                builder.append("        ").append(className).append("::").append(column.propertyName)
+                    .append(" -> \"").append(escapeString(column.columnName)).append('"').append('\n')
+            }
+            builder.append("        else -> ").append(className.replaceFirstChar { it.lowercase(Locale.getDefault()) })
+                .append("ToSnakeCase(name)").append('\n')
+                .append("    }").append('\n').append('\n')
         }
 
         builder.append("val ").append(className).append(".TableInfo.AllColumns: List<String>").append('\n')
@@ -190,7 +237,7 @@ private class TableSymbolProcessor(
         } else {
             builder.append("listOf(").append('\n')
             for ((index, column) in columns.withIndex()) {
-                builder.append("        ").append(column.propertyName)
+                builder.append("        ").append(className).append("::").append(column.propertyName).append(".columnName")
                 if (index < columns.lastIndex) {
                     builder.append(',')
                 }
@@ -198,6 +245,23 @@ private class TableSymbolProcessor(
             }
             builder.append("    )").append('\n')
         }
+
+        builder.append('\n')
+            .append("private fun ").append(className.replaceFirstChar { it.lowercase(Locale.getDefault()) })
+            .append("ToSnakeCase(name: String): String {").append('\n')
+            .append("    return name").append('\n')
+            .append("        .replace(Regex(\"([A-Z]+)([A-Z][a-z])\"), \"\$1_\$2\")").append('\n')
+            .append("        .replace(Regex(\"([a-z0-9])([A-Z])\"), \"\$1_\$2\")").append('\n')
+            .append("        .lowercase(Locale.getDefault())").append('\n')
+            .append("}").append('\n')
+
+        appendResultSetMapperFunction(
+            builder = builder,
+            className = className,
+            columns = columns,
+            mapperColumns = mapperColumns,
+            generateMapper = generateMapper
+        )
 
         return builder.toString()
     }
@@ -209,9 +273,14 @@ private class TableSymbolProcessor(
     }
 }
 
-private data class ColumnInfo(
+internal data class ColumnInfo(
     val propertyName: String,
-    val columnName: String
+    val columnName: String,
+    val typeName: String,
+    val isNullable: Boolean,
+    val isEnum: Boolean,
+    val enumTypeName: String,
+    val hasExplicitColumnName: Boolean
 )
 
 private data class TableConfig(
