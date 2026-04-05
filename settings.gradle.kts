@@ -23,3 +23,5 @@ include(":app")
 
 rootProject.name = "table-plugin"
 include("test-plugin")
+include("table-annotations")
+include("table-ksp")
