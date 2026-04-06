@@ -66,3 +66,9 @@ data class CustomerStateLog(
 ) {
     companion object TableInfo
 }
+
+@Table
+data class Guest(
+    val id: Long,
+    val displayName: String
+)

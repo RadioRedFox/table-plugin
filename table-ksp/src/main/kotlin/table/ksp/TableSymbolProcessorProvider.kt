@@ -64,13 +64,7 @@ private class TableSymbolProcessor(
             logger.warn("@Table supports data classes only.", classDeclaration)
             return
         }
-        if (!hasTableInfoCompanion(classDeclaration)) {
-            logger.warn(
-                "Class ${classDeclaration.simpleName.asString()} is marked with @Table but has no companion object TableInfo. Generation skipped.",
-                classDeclaration
-            )
-            return
-        }
+        val hasTableInfo = hasTableInfoCompanion(classDeclaration)
 
         val className = classDeclaration.simpleName.asString()
         val packageName = classDeclaration.packageName.asString()
@@ -107,7 +101,8 @@ private class TableSymbolProcessor(
                     tableName = tableConfig.tableName,
                     columns = columns,
                     mapperColumns = mapperColumns,
-                    generateMapper = canGenerateMapper
+                    generateMapper = canGenerateMapper,
+                    hasTableInfo = hasTableInfo
                 )
             )
         }
@@ -198,7 +193,8 @@ private class TableSymbolProcessor(
         tableName: String,
         columns: List<ColumnInfo>,
         mapperColumns: List<ColumnInfo>,
-        generateMapper: Boolean
+        generateMapper: Boolean,
+        hasTableInfo: Boolean
     ): String {
         val builder = StringBuilder()
 
@@ -209,8 +205,10 @@ private class TableSymbolProcessor(
         builder.append("import java.util.Locale").append('\n')
         appendResultSetMapperImports(builder, generateMapper)
 
-        builder.append("val ").append(className).append(".TableInfo.TableName: String").append('\n')
-            .append("    get() = \"").append(escapeString(tableName)).append('"').append('\n').append('\n')
+        if (hasTableInfo) {
+            builder.append("val ").append(className).append(".TableInfo.TableName: String").append('\n')
+                .append("    get() = \"").append(escapeString(tableName)).append('"').append('\n').append('\n')
+        }
 
         val explicitColumns = columns.filter { it.hasExplicitColumnName }
         builder.append("val <T> KProperty1<").append(className).append(", T>.columnName: String").append('\n')
@@ -229,21 +227,33 @@ private class TableSymbolProcessor(
                 .append("    }").append('\n').append('\n')
         }
 
-        builder.append("val ").append(className).append(".TableInfo.AllColumns: List<String>").append('\n')
-            .append("    get() = ")
+        if (hasTableInfo) {
+            builder.append("val ").append(className).append(".TableInfo.AllColumns: List<String>").append('\n')
+                .append("    get() = ")
 
-        if (columns.isEmpty()) {
-            builder.append("listOf()").append('\n')
-        } else {
-            builder.append("listOf(").append('\n')
-            for ((index, column) in columns.withIndex()) {
-                builder.append("        ").append(className).append("::").append(column.propertyName).append(".columnName")
-                if (index < columns.lastIndex) {
-                    builder.append(',')
+            if (columns.isEmpty()) {
+                builder.append("listOf()").append('\n')
+            } else {
+                builder.append("listOf(").append('\n')
+                for ((index, column) in columns.withIndex()) {
+                    builder.append("        ").append(className).append("::").append(column.propertyName).append(".columnName")
+                    if (index < columns.lastIndex) {
+                        builder.append(',')
+                    }
+                    builder.append('\n')
                 }
-                builder.append('\n')
+                builder.append("    )").append('\n')
             }
-            builder.append("    )").append('\n')
+
+            builder.append('\n')
+                .append("fun ").append(className)
+                .append(".TableInfo.AllColumnsSql(")
+                .append("tableShortName: String = \"\", prefix: String = \"\"")
+                .append("): String = ").append('\n')
+                .append("    AllColumns.joinToString(\",\\n\") { column ->").append('\n')
+                .append("        val withTable = if (tableShortName.isEmpty()) column else \"\$tableShortName.\$column\"").append('\n')
+                .append("        if (prefix.isEmpty()) withTable else \"\$withTable as \$prefix\$column\"").append('\n')
+                .append("    }").append('\n')
         }
 
         builder.append('\n')

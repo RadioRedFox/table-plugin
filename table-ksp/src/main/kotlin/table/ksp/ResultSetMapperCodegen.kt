@@ -22,7 +22,8 @@ internal fun appendResultSetMapperFunction(
 
     builder.append('\n')
     val generatedColumnPropertyNames = columns.map { it.propertyName }.toSet()
-    builder.append("fun ResultSet.to").append(className).append("(): ").append(className).append(" {").append('\n')
+    builder.append("fun ResultSet.to").append(className)
+        .append("(prefix: String = \"\"): ").append(className).append(" {").append('\n')
         .append("    return ").append(className).append("(").append('\n')
 
     for ((index, column) in mapperColumns.withIndex()) {
@@ -49,11 +50,12 @@ private fun buildReadExpression(
     column: ColumnInfo,
     useGeneratedColumnRef: Boolean
 ): String {
-    val columnRef = if (useGeneratedColumnRef) {
+    val baseColumnRef = if (useGeneratedColumnRef) {
         "$className::${column.propertyName}.columnName"
     } else {
         "\"${escapeMapperString(column.columnName)}\""
     }
+    val columnRef = "prefix + $baseColumnRef"
     val primitiveGetter = if (!column.isNullable) {
         primitiveGetterName(column.typeName)
     } else {
